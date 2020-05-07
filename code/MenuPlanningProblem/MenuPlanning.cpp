@@ -361,10 +361,16 @@ bool MenuPlanning::checkInfoN2(void) {
   return true;
 }
 
-float MenuPlanning::computeFinalFeasibility() {
-  float totalFeasibility = 0.0;
+/**
+ * Método que se encarga de calcular la factibilidad de un
+ * individuo con respecto a las restricciones de nutrientes
+ *
+ * Alejandro Marrero - alu0100825008@ull.edu.es
+ **/
+double MenuPlanning::computeFeasibility() {
+  double totalFeasibility = 0.0;
   for (int j = 0; j < num_nutr; j++) {
-    float feasibilityDegree = 0;
+    double feasibilityDegree = 0;
     for (int i = 0; i < nDias; i++) {
       feasibilityDegree +=
           v_primerosPlatos[getVar(i * num_tipoPlato)].infoN[j] +
@@ -379,317 +385,294 @@ float MenuPlanning::computeFinalFeasibility() {
 
     return totalFeasibility;
   }
+}
 
-  /**
-   * Método empleado para comprobar la factibilidad de los individuos
-   *resultantes de las ejecuciones
-   **/
-  std::stringstream &MenuPlanning::computeFinalFeasibility() {
-    std::stringstream stringStream;
-    stringStream << (MenuPlanning *)(this) << std::endl;
-    double feasibilityDegree = 0.0;
-    for (int j = 0; j < num_nutr; j++) {
-      stringStream << "Nutr #" << j << "[" << ingRecomendada[j].first << ", "
-                   << ingRecomendada[j].second << "] = ";
-      feasibilityDegree = 0;
-      for (int i = 0; i < nDias; i++) {
-        feasibilityDegree +=
-            v_primerosPlatos[getVar(i * num_tipoPlato)].infoN[j] +
-            v_segundosPlatos[getVar(i * num_tipoPlato + 1)].infoN[j] +
-            v_postres[getVar(i * num_tipoPlato + 2)].infoN[j];
-      }
-      stringStream << feasibilityDegree << std::endl;
-    }
-    return stringStream;
+/*-----------------------------------------------*/
+/*---------- EVALUACION DEL INDIVIDUO -----------*/
+/*-----------------------------------------------*/
+void MenuPlanning::evaluate(void) {
+  double precioTotal = 0;
+  double valPP, valSP, valP, valTabla, valGAFirst;
+  double numPP = penalizaciones[15];
+  double numSP = penalizaciones[16];
+  double numP = penalizaciones[17];
+
+  double valTotal = 0;
+  vector<int> gaElegidos;          // Vector que guarda los grupos alimenticios
+                                   // pertenecientes a los platos elegidos
+  vector<int> gaElegidosAnterior;  // Vector que guarda los ga pertenecientes
+                                   // al menu de la iteracion anterior
+  vector<vector<int> > ultimos5GA;
+  int x = 0;
+
+  for (int i = 0; i < nDias; i++) {
+    x = i * num_tipoPlato;
+
+    //- PRECIO
+    //-------------------------------------------------------------------------------------------------------------
+    precioTotal += v_primerosPlatos[getVar(x)].precio +
+                   v_segundosPlatos[getVar(x + 1)].precio +
+                   v_postres[getVar(x + 2)].precio;
+
+    //- INFORMACION NUTRICIONAL
+    //--------------------------------------------------------------------------------------------
+    for (int j = 0; j < infoNPlan.size(); j++)
+      infoNPlan[j] += v_primerosPlatos[getVar(x)].infoN[j] +
+                      v_segundosPlatos[getVar(x + 1)].infoN[j] +
+                      v_postres[getVar(x + 2)].infoN[j];
   }
+  setObj(0, precioTotal);
 
-  /*-----------------------------------------------*/
-  /*---------- EVALUACION DEL INDIVIDUO -----------*/
-  /*-----------------------------------------------*/
-  void MenuPlanning::evaluate(void) {
-    double precioTotal = 0;
-    double valPP, valSP, valP, valTabla, valGAFirst;
-    double numPP = penalizaciones[15];
-    double numSP = penalizaciones[16];
-    double numP = penalizaciones[17];
+  //- GRADO DE REPETICION
+  //-----------------------------------------------------------------------------------------------------
+  for (int i = 0; i < nDias; i++) {
+    x = i * num_tipoPlato;
 
-    double valTotal = 0;
-    vector<int> gaElegidos;  // Vector que guarda los grupos alimenticios
-                             // pertenecientes a los platos elegidos
-    vector<int> gaElegidosAnterior;  // Vector que guarda los ga pertenecientes
-                                     // al menu de la iteracion anterior
-    vector<vector<int> > ultimos5GA;
-    int x = 0;
-
-    for (int i = 0; i < nDias; i++) {
-      x = i * num_tipoPlato;
-
-      //- PRECIO
-      //-------------------------------------------------------------------------------------------------------------
-      precioTotal += v_primerosPlatos[getVar(x)].precio +
-                     v_segundosPlatos[getVar(x + 1)].precio +
-                     v_postres[getVar(x + 2)].precio;
-
-      //- INFORMACION NUTRICIONAL
-      //--------------------------------------------------------------------------------------------
-      for (int j = 0; j < infoNPlan.size(); j++)
-        infoNPlan[j] += v_primerosPlatos[getVar(x)].infoN[j] +
-                        v_segundosPlatos[getVar(x + 1)].infoN[j] +
-                        v_postres[getVar(x + 2)].infoN[j];
-    }
-    setObj(0, precioTotal);
-
-    //- GRADO DE REPETICION
-    //-----------------------------------------------------------------------------------------------------
-    for (int i = 0; i < nDias; i++) {
-      x = i * num_tipoPlato;
-
-      // PRIMER PLATO
-      valPP = setValorPP(getVar(
-          x));  // Numero de dias desde que se repitio el plato seleccionado
-      for (int j = 0; j < v_primerosPlatos[getVar(x)].gruposAl.size();
-           j++)  // Numero de dias desde que se repitio el grupo alimenticio
-      {
-        // comprueba si ya habia aparecido en el menu el grupo alimenticio j, si
-        // no lo a�ade al vector gaElegidos
-        if (gaElegidosPorIteracion(gaElegidos,
-                                   v_primerosPlatos[getVar(x)].gruposAl[j]))
-          gaElegidos.push_back(v_primerosPlatos[getVar(x)].gruposAl[j]);
-      }
-
-      // SEGUNDO PLATO
-      valSP = setValorSP(getVar(x + 1));
-      for (int k = 0; k < v_segundosPlatos[getVar(x + 1)].gruposAl.size();
-           k++) {
-        if (gaElegidosPorIteracion(gaElegidos,
-                                   v_segundosPlatos[getVar(x + 1)].gruposAl[k]))
-          gaElegidos.push_back(v_segundosPlatos[getVar(x + 1)].gruposAl[k]);
-      }
-
-      // POSTRE
-      valP = setValorP(getVar(x + 2));
-      for (int l = 0; l < v_postres[getVar(x + 2)].gruposAl.size(); l++) {
-        if (gaElegidosPorIteracion(gaElegidos,
-                                   v_postres[getVar(x + 2)].gruposAl[l]))
-          gaElegidos.push_back(v_postres[getVar(x + 2)].gruposAl[l]);
-      }
-
-      valTabla = v3_compatibilidadPlatos[getVar(x)][getVar(x + 1)][getVar(
-          x + 2)];  // Obtener el valor de la tabla de platos de compatibilidad
-                    // entre primeros y segundos platos
-      valGAFirst = set_ValorGAFirstAlternativa(
-          ultimos5GA,
-          gaElegidos);  // Obtener el valor total del numero de dias
-                        // desde que se repitieron grupos alimenticios
-      valTotal +=
-          valTabla + numPP / valPP + numSP / valSP + numP / valP + valGAFirst;
-
-      sumValorPP();  // Suma los valores de platos y grupos alimenticios
-                     // elegidos para el siguiente dia
-      sumValorSP();
-      sumValorP();
-      sumValorGA();
-
-      set_ultimos5GA(ultimos5GA, gaElegidos);
-      gaElegidosAnterior = gaElegidos;
-      gaElegidos.clear();
+    // PRIMER PLATO
+    valPP = setValorPP(getVar(
+        x));  // Numero de dias desde que se repitio el plato seleccionado
+    for (int j = 0; j < v_primerosPlatos[getVar(x)].gruposAl.size();
+         j++)  // Numero de dias desde que se repitio el grupo alimenticio
+    {
+      // comprueba si ya habia aparecido en el menu el grupo alimenticio j, si
+      // no lo a�ade al vector gaElegidos
+      if (gaElegidosPorIteracion(gaElegidos,
+                                 v_primerosPlatos[getVar(x)].gruposAl[j]))
+        gaElegidos.push_back(v_primerosPlatos[getVar(x)].gruposAl[j]);
     }
 
-    ultimos5GA.clear();
-    gaElegidosAnterior.clear();
-
-    setObj(1, valTotal);
-  }
-
-  /*----------------------------------------------------------------------*/
-  /*---------- METODOS PARA EL CALCULO DEL GRADO DE REPETICION -----------*/
-  /*----------------------------------------------------------------------*/
-
-  bool MenuPlanning::gaElegidosPorIteracion(vector<int> vec, int valor) {
-    bool resultado = true;
-    for (int i = 0; i < vec.size(); i++)
-      if (vec[i] == valor) resultado = false;
-    return resultado;
-  }
-
-  int MenuPlanning::setValorPP(int id) {
-    int valor = i_max;  // Tengo que retornar el numero de dias desde que se
-                        // eligio el plato por ultima vez
-    if (v_primerosPlatos[id].diasRep !=
-        i_max)  // Si el numero de dias es i_max, significa que nunca se ha
-                // elegido, por lo que retorno 0
-      valor = v_primerosPlatos[id]
-                  .diasRep;  // Si el numero de dias es distinto a i_max,
-                             // retorno el valor y reseteo el numero de dias a 0
-    v_primerosPlatos[id].diasRep = 0;
-
-    return valor;
-  }
-
-  int MenuPlanning::setValorSP(int id) {
-    int valor = i_max;
-    if (v_segundosPlatos[id].diasRep != i_max)
-      valor = v_segundosPlatos[id].diasRep;
-    v_segundosPlatos[id].diasRep = 0;
-
-    return valor;
-  }
-
-  int MenuPlanning::setValorP(int id) {
-    int valor = i_max;
-    if (v_postres[id].diasRep != i_max) valor = v_postres[id].diasRep;
-    v_postres[id].diasRep = 0;
-
-    return valor;
-  }
-
-  void MenuPlanning::sumValorPP(void) {
-    for (int i = 0; i < v_primerosPlatos.size(); i++)
-      if (v_primerosPlatos[i].diasRep != i_max) v_primerosPlatos[i].diasRep++;
-  }
-
-  void MenuPlanning::sumValorSP(void) {
-    for (int i = 0; i < v_segundosPlatos.size(); i++)
-      if (v_segundosPlatos[i].diasRep != i_max) v_segundosPlatos[i].diasRep++;
-  }
-
-  void MenuPlanning::sumValorP(void) {
-    for (int i = 0; i < v_postres.size(); i++)
-      if (v_postres[i].diasRep != i_max) v_postres[i].diasRep++;
-  }
-
-  void MenuPlanning::sumValorGA(void) {
-    for (int i = 0; i < gruposAl.size(); i++) {
-      if (gruposAl[i].first != i_max) gruposAl[i].first++;
-      gruposAl[i].second = i_max;
+    // SEGUNDO PLATO
+    valSP = setValorSP(getVar(x + 1));
+    for (int k = 0; k < v_segundosPlatos[getVar(x + 1)].gruposAl.size(); k++) {
+      if (gaElegidosPorIteracion(gaElegidos,
+                                 v_segundosPlatos[getVar(x + 1)].gruposAl[k]))
+        gaElegidos.push_back(v_segundosPlatos[getVar(x + 1)].gruposAl[k]);
     }
-  }
 
-  // METODO PARA ANIADIR LOS GA DE UN DIA EN EL VECTOR DE GAS DE LOS ULTIMOS 5
-  // DIAS
-  void MenuPlanning::set_ultimos5GA(vector<vector<int> > & ultimos5GA,
-                                    vector<int> vec) {
-    if (ultimos5GA.size() < 5)
-      ultimos5GA.push_back(vec);
-    else {
-      ultimos5GA.erase(ultimos5GA.begin());
-      ultimos5GA.push_back(vec);
+    // POSTRE
+    valP = setValorP(getVar(x + 2));
+    for (int l = 0; l < v_postres[getVar(x + 2)].gruposAl.size(); l++) {
+      if (gaElegidosPorIteracion(gaElegidos,
+                                 v_postres[getVar(x + 2)].gruposAl[l]))
+        gaElegidos.push_back(v_postres[getVar(x + 2)].gruposAl[l]);
     }
+
+    valTabla = v3_compatibilidadPlatos[getVar(x)][getVar(x + 1)][getVar(
+        x + 2)];  // Obtener el valor de la tabla de platos de compatibilidad
+                  // entre primeros y segundos platos
+    valGAFirst = set_ValorGAFirstAlternativa(
+        ultimos5GA,
+        gaElegidos);  // Obtener el valor total del numero de dias
+                      // desde que se repitieron grupos alimenticios
+    valTotal +=
+        valTabla + numPP / valPP + numSP / valSP + numP / valP + valGAFirst;
+
+    sumValorPP();  // Suma los valores de platos y grupos alimenticios
+                   // elegidos para el siguiente dia
+    sumValorSP();
+    sumValorP();
+    sumValorGA();
+
+    set_ultimos5GA(ultimos5GA, gaElegidos);
+    gaElegidosAnterior = gaElegidos;
+    gaElegidos.clear();
   }
 
-  double MenuPlanning::set_ValorGAFirstAlternativa(
-      vector<vector<int> > & ultimos5GA, vector<int> vec) {
-    /* 0 Otros, 1 Carne, 2 Cereal, 3 Fruta, 4 Lacteo, 5 Legumbre, 6 Marisco, 7
-     * Pasta, 8 Pescado, 9 Verdura */
-    double penalizacionPorGA[10] = {penalizaciones[0], penalizaciones[1],
-                                    penalizaciones[2], penalizaciones[3],
-                                    penalizaciones[4], penalizaciones[5],
-                                    penalizaciones[6], penalizaciones[7],
-                                    penalizaciones[8], penalizaciones[9]};
-    double penalizacionPorDias[5] = {penalizaciones[10], penalizaciones[11],
-                                     penalizaciones[12], penalizaciones[13],
-                                     penalizaciones[14]};
-    bool pen[5] = {false, false, false, false, false};
-    double resultado = 0;
+  ultimos5GA.clear();
+  gaElegidosAnterior.clear();
 
-    if (ultimos5GA.size() > 0) {
-      for (int i = 0; i < vec.size(); i++) {
-        for (int j = 0; j < ultimos5GA.size(); j++)
-          for (int k = 0; k < ultimos5GA[j].size(); k++) {
-            if (vec[i] == ultimos5GA[j][k]) {
-              pen[j] = true;
-              resultado += penalizacionPorGA[vec[i]];
-            }
+  setObj(1, valTotal);
+}
+
+/*----------------------------------------------------------------------*/
+/*---------- METODOS PARA EL CALCULO DEL GRADO DE REPETICION -----------*/
+/*----------------------------------------------------------------------*/
+
+bool MenuPlanning::gaElegidosPorIteracion(vector<int> vec, int valor) {
+  bool resultado = true;
+  for (int i = 0; i < vec.size(); i++)
+    if (vec[i] == valor) resultado = false;
+  return resultado;
+}
+
+int MenuPlanning::setValorPP(int id) {
+  int valor = i_max;  // Tengo que retornar el numero de dias desde que se
+                      // eligio el plato por ultima vez
+  if (v_primerosPlatos[id].diasRep !=
+      i_max)  // Si el numero de dias es i_max, significa que nunca se ha
+              // elegido, por lo que retorno 0
+    valor = v_primerosPlatos[id]
+                .diasRep;  // Si el numero de dias es distinto a i_max,
+                           // retorno el valor y reseteo el numero de dias a 0
+  v_primerosPlatos[id].diasRep = 0;
+
+  return valor;
+}
+
+int MenuPlanning::setValorSP(int id) {
+  int valor = i_max;
+  if (v_segundosPlatos[id].diasRep != i_max)
+    valor = v_segundosPlatos[id].diasRep;
+  v_segundosPlatos[id].diasRep = 0;
+
+  return valor;
+}
+
+int MenuPlanning::setValorP(int id) {
+  int valor = i_max;
+  if (v_postres[id].diasRep != i_max) valor = v_postres[id].diasRep;
+  v_postres[id].diasRep = 0;
+
+  return valor;
+}
+
+void MenuPlanning::sumValorPP(void) {
+  for (int i = 0; i < v_primerosPlatos.size(); i++)
+    if (v_primerosPlatos[i].diasRep != i_max) v_primerosPlatos[i].diasRep++;
+}
+
+void MenuPlanning::sumValorSP(void) {
+  for (int i = 0; i < v_segundosPlatos.size(); i++)
+    if (v_segundosPlatos[i].diasRep != i_max) v_segundosPlatos[i].diasRep++;
+}
+
+void MenuPlanning::sumValorP(void) {
+  for (int i = 0; i < v_postres.size(); i++)
+    if (v_postres[i].diasRep != i_max) v_postres[i].diasRep++;
+}
+
+void MenuPlanning::sumValorGA(void) {
+  for (int i = 0; i < gruposAl.size(); i++) {
+    if (gruposAl[i].first != i_max) gruposAl[i].first++;
+    gruposAl[i].second = i_max;
+  }
+}
+
+// METODO PARA ANIADIR LOS GA DE UN DIA EN EL VECTOR DE GAS DE LOS ULTIMOS 5
+// DIAS
+void MenuPlanning::set_ultimos5GA(vector<vector<int> > &ultimos5GA,
+                                  vector<int> vec) {
+  if (ultimos5GA.size() < 5)
+    ultimos5GA.push_back(vec);
+  else {
+    ultimos5GA.erase(ultimos5GA.begin());
+    ultimos5GA.push_back(vec);
+  }
+}
+
+double MenuPlanning::set_ValorGAFirstAlternativa(
+    vector<vector<int> > &ultimos5GA, vector<int> vec) {
+  /* 0 Otros, 1 Carne, 2 Cereal, 3 Fruta, 4 Lacteo, 5 Legumbre, 6 Marisco, 7
+   * Pasta, 8 Pescado, 9 Verdura */
+  double penalizacionPorGA[10] = {penalizaciones[0], penalizaciones[1],
+                                  penalizaciones[2], penalizaciones[3],
+                                  penalizaciones[4], penalizaciones[5],
+                                  penalizaciones[6], penalizaciones[7],
+                                  penalizaciones[8], penalizaciones[9]};
+  double penalizacionPorDias[5] = {penalizaciones[10], penalizaciones[11],
+                                   penalizaciones[12], penalizaciones[13],
+                                   penalizaciones[14]};
+  bool pen[5] = {false, false, false, false, false};
+  double resultado = 0;
+
+  if (ultimos5GA.size() > 0) {
+    for (int i = 0; i < vec.size(); i++) {
+      for (int j = 0; j < ultimos5GA.size(); j++)
+        for (int k = 0; k < ultimos5GA[j].size(); k++) {
+          if (vec[i] == ultimos5GA[j][k]) {
+            pen[j] = true;
+            resultado += penalizacionPorGA[vec[i]];
           }
-      }
-      for (int x = 0; x < 5; x++)
-        if (pen[x]) {
-          resultado += penalizacionPorDias[x];
-          pen[x] = false;
         }
     }
-
-    return resultado;
+    for (int x = 0; x < 5; x++)
+      if (pen[x]) {
+        resultado += penalizacionPorDias[x];
+        pen[x] = false;
+      }
   }
 
-  //------------------------------------------------------------------------------------------------
+  return resultado;
+}
 
-  void MenuPlanning::mostrarPlatos(void) {
-    cout << "\n\nPRIMEROS PLATOS";
-    for (int i = 0; i < v_primerosPlatos.size(); i++) {
-      cout << "\nNombre: " << v_primerosPlatos[i].nombre;
-      cout << "\ndiasrep: " << v_primerosPlatos[i].diasRep;
-      cout << "\nprecio: " << v_primerosPlatos[i].precio;
-      cout << "\ncantidad: " << v_primerosPlatos[i].cantidad;
-      cout << "\ngrupos Al:";
-      for (int x = 0; x < v_primerosPlatos[i].gruposAl.size(); x++) {
-        cout << "\n- " << v_primerosPlatos[i].gruposAl[x];
-      }
-      cout << "\nInfo Nut:";
-      for (int x = 0; x < v_primerosPlatos[i].infoN.size(); x++) {
-        cout << "\n- " << v_primerosPlatos[i].infoN[x];
-      }
-      cout << "\nAlergenos:";
-      for (int x = 0; x < v_primerosPlatos[i].alg.size(); x++) {
-        cout << "\n- " << v_primerosPlatos[i].alg[x];
-      }
+//------------------------------------------------------------------------------------------------
 
-      cout << "\nIncompatibilidades:";
-      for (int x = 0; x < v_primerosPlatos[i].inc.size(); x++) {
-        cout << "\n- " << v_primerosPlatos[i].inc[x];
-      }
-      cin.get();
+void MenuPlanning::mostrarPlatos(void) {
+  cout << "\n\nPRIMEROS PLATOS";
+  for (int i = 0; i < v_primerosPlatos.size(); i++) {
+    cout << "\nNombre: " << v_primerosPlatos[i].nombre;
+    cout << "\ndiasrep: " << v_primerosPlatos[i].diasRep;
+    cout << "\nprecio: " << v_primerosPlatos[i].precio;
+    cout << "\ncantidad: " << v_primerosPlatos[i].cantidad;
+    cout << "\ngrupos Al:";
+    for (int x = 0; x < v_primerosPlatos[i].gruposAl.size(); x++) {
+      cout << "\n- " << v_primerosPlatos[i].gruposAl[x];
+    }
+    cout << "\nInfo Nut:";
+    for (int x = 0; x < v_primerosPlatos[i].infoN.size(); x++) {
+      cout << "\n- " << v_primerosPlatos[i].infoN[x];
+    }
+    cout << "\nAlergenos:";
+    for (int x = 0; x < v_primerosPlatos[i].alg.size(); x++) {
+      cout << "\n- " << v_primerosPlatos[i].alg[x];
     }
 
-    cout << "\n\nSEGUNDOS PLATOS";
-    for (int i = 0; i < v_segundosPlatos.size(); i++) {
-      cout << "\nNombre: " << v_segundosPlatos[i].nombre;
-      cout << "\ndiasrep: " << v_segundosPlatos[i].diasRep;
-      cout << "\nprecio: " << v_segundosPlatos[i].precio;
-      cout << "\ncantidad: " << v_segundosPlatos[i].cantidad;
-      cout << "\ngrupos Al:";
-      for (int x = 0; x < v_segundosPlatos[i].gruposAl.size(); x++) {
-        cout << "\n- " << v_segundosPlatos[i].gruposAl[x];
-      }
-      cout << "\nInfo Nut:";
-      for (int x = 0; x < v_segundosPlatos[i].infoN.size(); x++) {
-        cout << "\n- " << v_segundosPlatos[i].infoN[x];
-      }
-      cout << "\nAlergenos:";
-      for (int x = 0; x < v_segundosPlatos[i].alg.size(); x++) {
-        cout << "\n- " << v_segundosPlatos[i].alg[x];
-      }
-
-      cout << "\nIncompatibilidades:";
-      for (int x = 0; x < v_segundosPlatos[i].inc.size(); x++) {
-        cout << "\n- " << v_segundosPlatos[i].inc[x];
-      }
-      cin.get();
+    cout << "\nIncompatibilidades:";
+    for (int x = 0; x < v_primerosPlatos[i].inc.size(); x++) {
+      cout << "\n- " << v_primerosPlatos[i].inc[x];
     }
-
-    cout << "\n\nPOSTRES";
-    for (int i = 0; i < v_postres.size(); i++) {
-      cout << "\nNombre: " << v_postres[i].nombre;
-      cout << "\ndiasrep: " << v_postres[i].diasRep;
-      cout << "\nprecio: " << v_postres[i].precio;
-      cout << "\ncantidad: " << v_postres[i].cantidad;
-      cout << "\ngrupos Al:";
-      for (int x = 0; x < v_postres[i].gruposAl.size(); x++) {
-        cout << "\n- " << v_postres[i].gruposAl[x];
-      }
-      cout << "\nInfo Nut:";
-      for (int x = 0; x < v_postres[i].infoN.size(); x++) {
-        cout << "\n- " << v_postres[i].infoN[x];
-      }
-      cout << "\nAlergenos:";
-      for (int x = 0; x < v_postres[i].alg.size(); x++) {
-        cout << "\n- " << v_postres[i].alg[x];
-      }
-
-      cout << "\nIncompatibilidades:";
-      for (int x = 0; x < v_postres[i].inc.size(); x++) {
-        cout << "\n- " << v_postres[i].inc[x];
-      }
-      cin.get();
-    }
+    cin.get();
   }
+
+  cout << "\n\nSEGUNDOS PLATOS";
+  for (int i = 0; i < v_segundosPlatos.size(); i++) {
+    cout << "\nNombre: " << v_segundosPlatos[i].nombre;
+    cout << "\ndiasrep: " << v_segundosPlatos[i].diasRep;
+    cout << "\nprecio: " << v_segundosPlatos[i].precio;
+    cout << "\ncantidad: " << v_segundosPlatos[i].cantidad;
+    cout << "\ngrupos Al:";
+    for (int x = 0; x < v_segundosPlatos[i].gruposAl.size(); x++) {
+      cout << "\n- " << v_segundosPlatos[i].gruposAl[x];
+    }
+    cout << "\nInfo Nut:";
+    for (int x = 0; x < v_segundosPlatos[i].infoN.size(); x++) {
+      cout << "\n- " << v_segundosPlatos[i].infoN[x];
+    }
+    cout << "\nAlergenos:";
+    for (int x = 0; x < v_segundosPlatos[i].alg.size(); x++) {
+      cout << "\n- " << v_segundosPlatos[i].alg[x];
+    }
+
+    cout << "\nIncompatibilidades:";
+    for (int x = 0; x < v_segundosPlatos[i].inc.size(); x++) {
+      cout << "\n- " << v_segundosPlatos[i].inc[x];
+    }
+    cin.get();
+  }
+
+  cout << "\n\nPOSTRES";
+  for (int i = 0; i < v_postres.size(); i++) {
+    cout << "\nNombre: " << v_postres[i].nombre;
+    cout << "\ndiasrep: " << v_postres[i].diasRep;
+    cout << "\nprecio: " << v_postres[i].precio;
+    cout << "\ncantidad: " << v_postres[i].cantidad;
+    cout << "\ngrupos Al:";
+    for (int x = 0; x < v_postres[i].gruposAl.size(); x++) {
+      cout << "\n- " << v_postres[i].gruposAl[x];
+    }
+    cout << "\nInfo Nut:";
+    for (int x = 0; x < v_postres[i].infoN.size(); x++) {
+      cout << "\n- " << v_postres[i].infoN[x];
+    }
+    cout << "\nAlergenos:";
+    for (int x = 0; x < v_postres[i].alg.size(); x++) {
+      cout << "\n- " << v_postres[i].alg[x];
+    }
+
+    cout << "\nIncompatibilidades:";
+    for (int x = 0; x < v_postres[i].inc.size(); x++) {
+      cout << "\n- " << v_postres[i].inc[x];
+    }
+    cin.get();
+  }
+}

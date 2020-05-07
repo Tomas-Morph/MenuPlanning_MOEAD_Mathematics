@@ -9,7 +9,6 @@
 #include <iostream>
 #include <limits>
 #include <sstream>
-#include <sstream>  // std::stringstream
 #include <string>
 #include <vector>
 
@@ -114,10 +113,7 @@ class MenuPlanning : public Individual {
   bool checkInfoN(const int i);
   bool checkInfoN2(void);
 
-  float computeFeasibility();
-  std::stringstream &computeFinalFeasibility();
-
-  std::ostream &operator<<(Individual *);
+  double computeFeasibility();
 
   // Metodos para el calculo del objetivo de grado de repeticion
   bool gaElegidosPorIteracion(vector<int> vec, int valor);
