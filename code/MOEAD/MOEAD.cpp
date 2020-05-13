@@ -11,6 +11,13 @@
 
 #include <algorithm>
 
+// Constantes para la gestion del threshold en las restricciones
+const static int LINEAR_THRESHOLD = 0;
+const static int ADAPTATIVE_THRESHOLD = 1;
+const static int FIXED_THRESHOLD = 2;
+const static double INITIAL_LINEAR_THRESHOLD = 0.01;
+const static int NUM_PARAMS = 6;
+
 // Constructor
 MOEAD::MOEAD() { secondPopulation = new vector<Individual *>; }
 
@@ -59,24 +66,32 @@ void MOEAD::computePenalties() {
   for (int i = 0; i < getPopulationSize(); i++) {
     violationDegrees[i] = (*MenuPlanning)(population[i]->computeFeasibility());
   }
-  minConstViolation =
-      *min_element(violationDegrees.begin(), violationDegrees.end());
-  maxConstViolation =
-      *max_element(violationDegrees.begin(), violationDegrees.end());
 
-  vioThreshold =
-      minConstViolation + 0.3 * (maxConstViolation - minConstViolation);
+  if (thresholdPolicy == ADAPTATIVE_THRESHOLD) {
+    minConstViolation =
+        *min_element(violationDegrees.begin(), violationDegrees.end());
+    maxConstViolation =
+        *max_element(violationDegrees.begin(), violationDegrees.end());
+    vioThreshold =
+        minConstViolation + 0.3 * (maxConstViolation - minConstViolation);
+  } else if (thresholdPolicy == LINEAR_THRESHOLD) {
+    vioThreshold = vioThreshold * getPerformedIterations();
+  }
 }
 
 bool MOEAD::init(const vector<string> &params) {
   // Check for the algorithm parameters
-  if (params.size() != 5) {
+  if (params.size() != NUM_PARAMS) {
     cerr << "Error MOEA/D: incorrect parameters" << endl;
     cerr << "Number of subproblems N" << endl;
     cerr << "Neighbourhood size T" << endl;
     cerr << "Weight vectors file name" << endl;
     cerr << "Mutation rate pm" << endl;
     cerr << "Crossover rate pc" << endl;
+    cerr << "Threshold policy: " << endl;
+    cerr << "\t- 0 = Linear" << endl;
+    cerr << "\t- 1 = Adaptative" << endl;
+    cerr << "\t- 2 = Fixed + value" << endl;
     return false;
   }
 
@@ -95,6 +110,18 @@ bool MOEAD::init(const vector<string> &params) {
   // Initialisation of the degree violation vector
   violationDegrees.resize(getPopulationSize(),
                           std::numeric_limits<double>::max());
+  // Gestion de las restricciones
+  thresholdPolicy = atoi(params[5].c_str());
+  // Si es fijo lo definimos al inicio y no cambiamos
+  if (thresholdPolicy == FIXED_THRESHOLD) {
+    if (params.size() != (NUM_PARAMS + 1)) {
+      return false;
+    } else {
+      vioThreshold = atof(params[6]);
+    }
+  } else if (thresholdPolicy == LINEAR_THRESHOLD) {
+    vioThreshold = INITIAL_LINEAR_THRESHOLD;
+  }
   return true;
 }
 
@@ -159,44 +186,30 @@ void MOEAD::initialiseNeighbourhood() {
          << endl;
     exit(1);
   }
-
   neighbourhood = vector<vector<int> >(getPopulationSize(), vector<int>());
-
   for (int i = 0; i < getPopulationSize(); i++) {
     vector<int> indx;
     vector<double> dist;
-
     for (int j = 0; j < getPopulationSize(); j++) {
       indx.push_back(j);
       double tp = getEuclideanDistance(weightVector[i], weightVector[j]);
       dist.push_back(tp);
     }
-
     minFastSort(dist, indx, getPopulationSize(), getNeighbourhoodSize() + 1);
-
     for (int k = 0; k < getNeighbourhoodSize(); k++) {
       neighbourhood[i].push_back(indx[k]);
     }
-
     indx.clear();
     dist.clear();
   }
 }
 
-/*void MOEAD::initialisePopulation() {
-  for(int i = 0; i < getPopulationSize(); i++) {
-    updateReferencePoint((*population)[i]);
-  }
-}*/
-
 Individual *MOEAD::createOffspring(const int &i) {
   // Selects two neighboring solutions randomly
   int id1 = (int)(getNeighbourhoodSize()) * (rand() / (RAND_MAX + 1.0));
   int id2 = (int)(getNeighbourhoodSize()) * (rand() / (RAND_MAX + 1.0));
-
   Individual *p1 = (*population)[neighbourhood[i][id1]]->internalClone();
   Individual *p2 = (*population)[neighbourhood[i][id2]]->internalClone();
-
   // Crossover
   double vcross = rand() / (RAND_MAX + 1.0);
   if (vcross < pc) {

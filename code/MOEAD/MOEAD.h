@@ -87,6 +87,7 @@ class MOEAD : public EA {
   double minConstViolation;
   double maxConstViolation;
   double vioThreshold;
+  int thresholdPolicy;
   // Vector which stores the Degree of constraint violation for each individual
   vector<double> violationDegrees;
   // Scaling parameters for the Tchebycheff function
@@ -150,6 +151,13 @@ class MOEAD : public EA {
 
   // Calculates the Euclidean distance between two weight vectors
   double getEuclideanDistance(vector<double> weightA, vector<double> weightB);
+
+ private:
+  const static int LINEAR_THRESHOLD;
+  const static int ADAPTATIVE_THRESHOLD;
+  const static int FIXED_THRESHOLD;
+  const static double INITIAL_LINEAR_THRESHOLD;
+  const static int NUM_PARAMS;
 };
 
 #endif
