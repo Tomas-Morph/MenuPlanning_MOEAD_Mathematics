@@ -8,8 +8,10 @@
  * *********************************************************************************/
 
 #include "MOEAD.h"
-
 #include <algorithm>
+#include <limits>
+
+class MenuPlanning;
 
 // Constantes para la gestion del threshold en las restricciones
 const static int LINEAR_THRESHOLD = 0;
@@ -48,7 +50,7 @@ void MOEAD::runGeneration() {
     // Creates a new offspring by applying the variation operators
     // LA EVALUACION SE REALIZA TRAS LA CREACION
     Individual *offSpring = createOffspring(i);
-    double offSpringVioDegree = (*MenuPlanning)((offspring->computePenalties());
+    double offSpringVioDegree = offSpring->computeFeasibility();
     // Updates the state of the algorithm
     updateReferencePoint(offSpring);
     updateNeighbouringSolution(offSpring, i, offSpringVioDegree);
@@ -64,18 +66,18 @@ void MOEAD::runGeneration() {
  **/
 void MOEAD::computePenalties() {
   for (int i = 0; i < getPopulationSize(); i++) {
-    violationDegrees[i] = (*MenuPlanning)(population[i]->computeFeasibility());
+    violationDegrees[i] = (*population)[i]->computeFeasibility();
   }
 
   if (thresholdPolicy == ADAPTATIVE_THRESHOLD) {
     minConstViolation =
-        *min_element(violationDegrees.begin(), violationDegrees.end());
+        *std::min_element(violationDegrees.begin(), violationDegrees.end());
     maxConstViolation =
-        *max_element(violationDegrees.begin(), violationDegrees.end());
+        *std::max_element(violationDegrees.begin(), violationDegrees.end());
     vioThreshold =
         minConstViolation + 0.3 * (maxConstViolation - minConstViolation);
   } else if (thresholdPolicy == LINEAR_THRESHOLD) {
-    vioThreshold = vioThreshold * getPerformedIterations();
+    vioThreshold = vioThreshold * getGeneration();
   }
 }
 
@@ -117,7 +119,7 @@ bool MOEAD::init(const vector<string> &params) {
     if (params.size() != (NUM_PARAMS + 1)) {
       return false;
     } else {
-      vioThreshold = atof(params[6]);
+      vioThreshold = atof(params[6].c_str());
     }
   } else if (thresholdPolicy == LINEAR_THRESHOLD) {
     vioThreshold = INITIAL_LINEAR_THRESHOLD;
