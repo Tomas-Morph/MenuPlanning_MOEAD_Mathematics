@@ -29,6 +29,8 @@
 #include "Individual.h"
 #include "MOFront.h"
 
+using namespace std;
+
 class MOEAD : public EA {
  public:
   // Constructor
