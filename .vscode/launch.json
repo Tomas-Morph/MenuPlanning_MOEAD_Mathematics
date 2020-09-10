@@ -10,9 +10,11 @@
             "request": "launch",
             "program": "${file}",
             "args": [
-                "/home/amarrero/Proyectos/MenuPlanning_MOEAD_Mathematics_2020/results/Mono-objective-results-CEC/20-Days",
-                "1",
-                "Mono-objective_20-Days_dataset.csv",
+                "/home/amarrero/Proyectos/MenuPlanning_MOEAD_Mathematics_2020/results/Multi-objective-results-Mathematics/Insurgente/20-Days/RAW",
+                "2",
+                "Multi-objective_Insurgente_20-Days.csv",
+                "MOEA/D",
+                "-v"
             ],
             "console": "integratedTerminal"
         }

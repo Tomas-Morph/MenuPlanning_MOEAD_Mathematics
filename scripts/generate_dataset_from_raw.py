@@ -22,7 +22,8 @@ def parse_files(path, num_of_objs=2, algorithm_name='', verbose=False):
         for line in reversed(list(open(file))):
             if FRONT in line:
                 break
-            elif len(line) > 1:
+            elif len(line.split()) > 1:
+
                 objs = list(map(float, line.split()[-num_of_objs:]))
                 ind_counter += 1
                 for idx in range(num_of_objs):

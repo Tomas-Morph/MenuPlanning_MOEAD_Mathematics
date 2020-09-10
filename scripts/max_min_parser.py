@@ -19,9 +19,7 @@ def parse_files(path, num_of_objs=2, verbose=False):
         if verbose:
             print(f'Parsing File: {file}')
         for line in reversed(list(open(file))):
-            if FRONT in line:
-                break
-            elif len(line) > 1:
+            if line[0].isdigit():
                 objs = list(map(float, line.split()[-num_of_objs:]))
                 for idx in range(num_of_objs):
                     if objs[idx] < objs_range[idx][MIN]:
@@ -37,10 +35,12 @@ def parse_files(path, num_of_objs=2, verbose=False):
         print(f'Ranges are: {objs_range}')
     return objs_range
 
+
 def write_results_to_file(filename, objs_range):
     with(open(filename, 'w')) as file:
-       for objective in objs_range:
-           file.write(f'{objective[MIN]} {objective[MAX]}\n')
+        for objective in objs_range:
+            file.write(f'{objective[MIN]} {objective[MAX]}\n')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

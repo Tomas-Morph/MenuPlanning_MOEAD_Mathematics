@@ -13,11 +13,11 @@ for (my $i = 0; $i < $numObj; $i++) {
 }
 
 # For each input file
-for my $currentRun (0..$numberRuns - 1) {
+for my $currentRun (1..$numberRuns) {
   my $currentStep = $stepSize;
 
-  system "gzip -d $fileName.$currentRun.gz";
-  open EVOF, "$fileName.$currentRun" or die "File $fileName.$currentRun cannot be opened";
+  #system "gzip -d $fileName\_$currentRun.txt.checked.gz";
+  open EVOF, "$fileName\_$currentRun.txt.checked" or die "File $fileName.$currentRun cannot be opened";
 
   # Reads the input file and stores all the individuals belonging to every step into a dynamic data structure
   while (<EVOF>) {
