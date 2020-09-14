@@ -12,11 +12,14 @@ MAX = 'max'
 
 
 def parse_files(path, num_of_objs=2, algorithm_name='', verbose=False):
-    # Buscamos todos los ficheros y los parseamos
+    """
+        Parseamos los ficheros de resultados de METCO
+        y nos quedamos con los mejores valores para los
+        objetivos alcanzados en cada una de las repeticiones
+    """
     data = []
     for file in [join(path, f) for f in listdir(path) if isfile(join(path, f))]:
-        file_objs = np.zeros(num_of_objs)
-        ind_counter = 0
+        file_objs = [np.Inf, np.Inf]
         if verbose:
             print(f'Parsing File: {file}')
         for line in reversed(list(open(file))):
@@ -25,10 +28,10 @@ def parse_files(path, num_of_objs=2, algorithm_name='', verbose=False):
             elif len(line.split()) > 1:
 
                 objs = list(map(float, line.split()[-num_of_objs:]))
-                ind_counter += 1
                 for idx in range(num_of_objs):
-                    file_objs[idx] += objs[idx]
-        file_objs /= ind_counter
+                    if objs[idx] < file_objs[idx]:
+                        file_objs[idx] = objs[idx]
+
         data.append((algorithm_name, *file_objs))
 
     return data
