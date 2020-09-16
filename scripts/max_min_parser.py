@@ -4,6 +4,7 @@ from os import listdir
 from os.path import isfile, join
 import numpy as np
 import argparse
+import re
 
 FRONT = 'Front'
 MIN = 'min'
@@ -18,7 +19,10 @@ def parse_files(path, num_of_objs=2, verbose=False):
     for file in [join(path, f) for f in listdir(path) if isfile(join(path, f))]:
         if verbose:
             print(f'Parsing File: {file}')
-        for line in reversed(list(open(file))):
+        with open(file) as f:
+            lines = f.readlines()
+
+        for line in lines:
             if line[0].isdigit():
                 objs = list(map(float, line.split()[-num_of_objs:]))
                 for idx in range(num_of_objs):
@@ -30,7 +34,6 @@ def parse_files(path, num_of_objs=2, verbose=False):
                         objs_range[idx][MAX] = objs[idx]
                         if verbose:
                             print(f'New {idx} {MAX} in file: {file}')
-
     if verbose:
         print(f'Ranges are: {objs_range}')
     return objs_range
