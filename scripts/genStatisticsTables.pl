@@ -7,7 +7,7 @@ sub getStats {
   my $algorithm = shift;
   my $statistics = {};
 
-  foreach my $fileName (`ls *${algorithm}*.allHV`) {
+  foreach my $fileName (`ls *${algorithm}*.csv`) {
     chomp($fileName);
 
     my $scriptR = "data1 = scan(\\\"$fileName\\\"); summary(data1)\n";
@@ -25,7 +25,7 @@ sub getStats {
 
 sub getRankings {
   my ($algorithm, $numberRuns) = @_;
-  my @fileNames = `ls *${algorithm}*.allHV`;
+  my @fileNames = `ls *${algorithm}*.csv`;
   my $rankings = {};
 
   for (my $i = 0; $i < @fileNames; $i++) {
@@ -79,9 +79,9 @@ sub printHashSortedByValue {
  
   foreach my $key (sort { $statHash->{$b}[$field] <=> $statHash->{$a}[$field] } keys %$statHash) {
     $key =~ /(${algorithm}.+)_days/;
-    my $shortKey = $1;
-    $shortKey =~ s/\_/\\\_/g;
-    print "$shortKey ";
+    #my $shortKey = $1;
+    #$shortKey =~ s/\_/\\\_/g;
+    print "$key ";
   
     for (my $i = 0; $i < 6; $i++) {
       print "& $statHash->{$key}[$i] ";

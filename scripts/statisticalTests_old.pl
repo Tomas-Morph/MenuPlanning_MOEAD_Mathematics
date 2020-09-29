@@ -223,7 +223,7 @@ if ($pValue < $alpha){ #OJO SUPONEMOS MINIMIZACION
     printf("OJO\n");
   } elsif (($mean1 > $mean2) && ($median1 < $median2)){
     printf("OJO\n");
-  } elsif ($median1 > $median2){
+  } elsif ($median1 < $median2){
     printf("Mejor: $file1\n");
   } else {
     printf("Mejor: $file2\n");
